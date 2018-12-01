@@ -38,7 +38,7 @@ session participant_ stepLines_ =
 
 
 writeStep : Bool -> String -> Step -> List String
-writeStep showReturn pFrom (Step pTo mCaption options steps) =
+writeStep showReturn pFrom (Step pTo options mCaption steps) =
     let
         to =
             " -> "
@@ -70,7 +70,10 @@ writeStep showReturn pFrom (Step pTo mCaption options steps) =
     in
     stepLine_
         :: session pTo stepLines_
-        |> Debug.log "indented"
+
+
+
+-- |> Debug.log "indented"
 
 
 withIndent =
