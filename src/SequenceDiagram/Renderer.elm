@@ -12,7 +12,6 @@ toPlantUml showReturn (Sequence name steps) =
 
         body =
             session name steps_
-
     in
     [ "@startuml\n\n" ]
         ++ skinparam
@@ -77,7 +76,7 @@ writeStep showReturn pFrom (Step pTo mCaption options steps) =
 withIndent =
     let
         indent s =
-            "  " ++ s
+            "    " ++ s
     in
     List.map indent
 
@@ -105,8 +104,6 @@ writeMaybeCaption mCaption =
     in
     Maybe.map mkCaption mCaption
         |> Maybe.withDefault ""
-
-
 
 
 withEol : String -> String

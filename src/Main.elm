@@ -59,6 +59,7 @@ view model =
             row [ Element.spacing 20, Element.alignTop ]
                 [ column
                     [ Element.spacing 20
+                    , Element.width (px 600)
                     , padding 20
                     , Background.color (Element.rgb 0.7 0.7 0.7)
                     , Font.color (Element.rgb 0.2 0.2 0.2)
@@ -81,7 +82,7 @@ view model =
 editor : Model -> Element Msg
 editor model =
     Input.multiline
-        [ Element.height (px 400)
+        [ Element.height (px 600)
         , Background.color (Element.rgb 0.2 0.2 0.2)
         , Font.color (Element.rgb 0.9 0.9 0.9)
         ]
