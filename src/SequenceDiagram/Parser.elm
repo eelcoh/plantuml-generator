@@ -51,22 +51,31 @@ sequence =
 {-
    The caption, the options and the list of child steps are all optional.
    Becaus of that, there are many options here.
-    1. string eol
-    2. string spaces1 eol
-    3. string spaces1 doubleQuotes eol
-    4. string spaces1 doubleQuotes spaces eol
-    5. string spaces1 options eol
-    6. string spaces1 options spaces eol
-    7. string spaces1 doubleQuotes spaces1 options eol
-    8. string spaces1 doubleQuotes spaces1 options spaces eol
+    1. word end
+    2. word caption end
+    6. word spaces1 options end
+    2. word spaces1 caption end
+    4. string spaces1 options colon end
+    5. string spaces1 options spaces1 colon end
+
 -}
+-- step : Parser Step
+-- step =
+--     P.oneOf
+--         [ returnStep
+--         , callStep
+--         ]
+-- returnStep : Parser Step
+-- returnStep =
+--     P.succeed (\mS -> Return mS)
+--         |= Parser.keyword
 
 
 step : Parser Step
 step =
     let
-        step_ participant_ ( caption_, options_, steps_ ) =
-            Step participant_ caption_ options_ steps_
+        step_ participant_ ( options_, caption_, steps_ ) =
+            Step participant_ options_ caption_ steps_
     in
     P.succeed step_
         |= participant
@@ -79,83 +88,64 @@ step =
                 |= P.oneOf
                     [ P.succeed identity
                         |= P.oneOf
-                            [ P.succeed (\o s -> ( Nothing, o, s ))
-                                -- There is no caption,
-                                -- there are options
-                                |= options
+                            [ P.succeed (\c s -> ( [], Just c, s ))
+                                -- There are no options,
+                                -- there is a caption
+                                |= caption
                                 |. Utils.spaces
                                 |= stepEnd
-                            , P.succeed (\c ( o, s ) -> ( Just c, o, s ))
-                                -- There is a caption, we don't know yet
-                                -- whether there are options
-                                |= caption
+                            , P.succeed (\o ( mC, s ) -> ( Debug.log "options" o, mC, s ))
+                                -- There are options, we don't know yet
+                                -- whether there is a caption
+                                |= options
+                                |. Utils.spaces
                                 |= P.oneOf
                                     [ P.succeed identity
                                         |= P.oneOf
-                                            [ P.succeed identity
-                                                -- we first hit a space
-                                                -- options is still a noption
-                                                |. Utils.spaces1
-                                                |= P.oneOf
-                                                    [ P.succeed (\o s -> ( o, s ))
-                                                        -- yes, there are options
-                                                        |= options
-                                                        |. Utils.spaces
-                                                        |= stepEnd
-                                                    , P.succeed (\s -> ( [], s ))
-                                                        -- no options, after the space
-                                                        -- we still hit the eol
-                                                        |= stepEnd
-                                                    ]
-                                            , P.succeed (\s -> ( [], s ))
+                                            [ P.succeed (\c s -> ( Just c, s ))
+                                                -- yes, there are options
+                                                |= caption
+                                                |= stepEnd
+                                            , P.succeed (\s -> ( Nothing, s ))
                                                 -- we directly hit eol
                                                 -- so there are no options
                                                 |= stepEnd
+
+                                            -- , P.succeed identity
+                                            --     |= P.oneOf
+                                            --         [ P.succeed (\c s -> ( Just (Debug.log " caption3" c), s ))
+                                            --             -- yes, there are options
+                                            --             |= caption
+                                            --             |. Utils.spaces
+                                            --             |= stepEnd
+                                            --         , P.succeed (\s -> ( Debug.log "no caption no 1" Nothing, s ))
+                                            --             -- no options, after the space
+                                            --             -- we still hit the eol
+                                            --             |= stepEnd
+                                            --         ]
+                                            -- , P.succeed (\s -> ( Debug.log "no caption no 2" Nothing, s ))
+                                            --     -- we directly hit eol
+                                            --     -- so there are no options
+                                            --     |= stepEnd
                                             ]
                                     ]
                             ]
-                    , P.succeed (\s -> ( Nothing, [], s ))
+                    , P.succeed (\s -> ( [], Nothing, s ))
                         -- There is no caption,
                         -- there are no options
                         |= stepEnd
                     ]
-            , P.succeed (\s -> ( Nothing, [], s ))
-                -- no space, we directly hit the eolof stepEnd
+            , P.succeed (\c s -> ( [], Just c, s ))
+                -- no space, we directly hit the caption
+                -- there are no options
+                |= caption
+                |= stepEnd
+            , P.succeed (\s -> ( [], Nothing, s ))
+                -- no space, we directly hit stepEnd
                 -- there is no caption,
                 -- there are no options
                 |= stepEnd
             ]
-
-
-step2 : Parser Step
-step2 =
-    let
-        s1 participant_ ( caption_, options_ ) steps_ =
-            Step participant_ caption_ options_ steps_
-
-        s2 participant_ steps_ =
-            Step participant_ Nothing [] steps_
-    in
-    P.oneOf
-        [ P.succeed s1
-            |= participant
-            |. Utils.spaces1
-            |= P.oneOf
-                -- 1. no caption, options only
-                -- 2. with caption, and *maybe* there are options
-                [ P.succeed (\o -> ( Nothing, o ))
-                    |= options
-                , P.succeed (\s o -> ( Just s, o ))
-                    |= caption
-                    |= Optional.withDefault [] (leadingSpaces options)
-                ]
-            |. Utils.spaces
-            |= stepEnd
-        , P.succeed s2
-            -- if neither caption and options are given
-            |= participant
-            |= stepEnd
-        ]
 
 
 stepEnd : Parser (List Step)
@@ -173,12 +163,15 @@ stepEnd =
 
 caption : Parser String
 caption =
-    Utils.doubleQuotes
+    succeed identity
+        |. Utils.colon
+        |. Utils.spaces
+        |= Utils.sentence
 
 
 participant : Parser String
 participant =
-    Utils.string
+    Utils.word
 
 
 leadingSpaces : Parser a -> Parser a
@@ -203,17 +196,17 @@ options =
 option : Parser Option
 option =
     oneOf
-        [ return
-        , async
+        [ async
         ]
 
 
-return : Parser Option
-return =
-    succeed Return
-        |. keyword "return"
-        |. Utils.spaces1
-        |= Utils.doubleQuotes
+
+-- return : Parser Option
+-- return =
+--     succeed Return
+--         |. keyword "return"
+--         |. Utils.spaces1
+--         |= Utils.doubleQuotes
 
 
 async : Parser Option

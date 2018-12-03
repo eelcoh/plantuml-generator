@@ -1,16 +1,16 @@
-module SequenceDiagram.Parser.Utils exposing (characters_, doubleQuote, doubleQuotes, eol, is, isDoubleQuote, isNewLine, isSentenceLiteral, isSpace, isStringLiteral, space, spaces, spaces1, string, strings)
+module SequenceDiagram.Parser.Utils exposing (characters_, colon, doubleQuote, doubleQuotes, eol, is, isDoubleQuote, isNewLine, isSentenceLiteral, isSpace, isStringLiteral, sentence, space, spaces, spaces1, word, words)
 
 import Parser as P exposing ((|.), (|=), Parser, Problem, end, int, keyword, lazy, oneOf, succeed, symbol)
 
 
-strings : Parser (List String)
-strings =
-    P.sequence 
+words : Parser (List String)
+words =
+    P.sequence
         { start = "["
         , separator = ","
         , end = "]"
         , spaces = spaces
-        , item = string
+        , item = word
         , trailing = P.Forbidden
         }
 
@@ -18,6 +18,11 @@ strings =
 space : Parser ()
 space =
     P.chompIf isSpace
+
+
+colon : Parser ()
+colon =
+    P.chompIf isColon
 
 
 
@@ -43,6 +48,11 @@ isSpace =
     is ' '
 
 
+isColon : Char -> Bool
+isColon =
+    is ':'
+
+
 isNewLine : Char -> Bool
 isNewLine =
     is '\n'
@@ -58,8 +68,8 @@ eol =
     P.chompUntilEndOr "\n"
 
 
-string : Parser String
-string =
+word : Parser String
+word =
     succeed ()
         |. P.chompWhile isStringLiteral
         |> P.getChompedString
@@ -78,6 +88,17 @@ isSentenceLiteral c =
         || Char.isDigit c
         || Char.isUpper c
         || Char.isLower c
+
+
+sentence : P.Parser String
+sentence =
+    succeed ()
+        |. P.chompWhile isSentenceLiteral
+        |> P.getChompedString
+
+
+
+-- characters_ (not << isNewLine)
 
 
 doubleQuotes : P.Parser String
