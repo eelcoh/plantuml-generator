@@ -43,7 +43,6 @@ sequence =
         |. Utils.spaces1
         |= participant
         |. Utils.spaces
-        |. Utils.colon
         |. Utils.eol
         |> P.andThen proceed
 
@@ -59,14 +58,6 @@ sequence =
     4. string spaces1 options colon end
     5. string spaces1 options spaces1 colon end
 
-    1. string eol
-    2. string spaces1 eol
-    3. string spaces1 doubleQuotes eol
-    4. string spaces1 doubleQuotes spaces eol
-    5. string spaces1 options eol
-    6. string spaces1 options spaces eol
-    7. string spaces1 doubleQuotes spaces1 options eol
-    8. string spaces1 doubleQuotes spaces1 options spaces eol
 -}
 -- step : Parser Step
 -- step =
