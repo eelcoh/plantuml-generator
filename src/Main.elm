@@ -12,12 +12,15 @@ import SequenceDiagram.Model exposing (Sequence)
 import SequenceDiagram.Parser exposing (parse)
 import SequenceDiagram.Renderer exposing (toPlantUml)
 
-
+import Editor exposing (Editor, EditorConfig, EditorMsg)
+import Editor.Config exposing (WrapOption(..))
+import Editor.Update as E
 type Msg
     = InputChange String
     | ChangeAlwaysReturn Bool
     | ChangeIncludeTheme Bool
     | ShowExample
+    | EditorMsg EditorMsg
 
 
 type alias Model =
@@ -25,12 +28,66 @@ type alias Model =
     , currentString : Maybe String
     , alwaysReturn : Bool
     , includeTheme : Bool
+    , editor : Editor
     }
 
 
-update : Msg -> Model -> ( Model, Cmd msg )
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        EditorMsg editorMsg ->
+            let
+                ( newEditor, editorCmd ) =
+                    Editor.update editorMsg model.editor
+
+                sourcetext = Just <| Editor.getSource newEditor
+            in
+                case editorMsg of 
+                
+                E.Insert str ->
+                    updateEditor model newEditor editorCmd
+
+                E.Unload str ->
+                    syncWithEditor model newEditor editorCmd
+
+                -- E.SendLine ->
+                --     syncAndHighlightRenderedText (Editor.lineAtCursor newEditor) (editorCmd |> Cmd.map EditorMsg) { model | editor = newEditor }
+
+                E.WrapAll ->
+                    syncWithEditor model newEditor editorCmd
+
+                E.Cut ->
+                    syncWithEditor model newEditor editorCmd
+
+                E.Paste ->
+                    syncWithEditor model newEditor editorCmd
+
+                E.Undo ->
+                    syncWithEditor model newEditor editorCmd
+
+                E.Redo ->
+                    syncWithEditor model newEditor editorCmd
+
+                E.RemoveGroupAfter ->
+                    syncWithEditor model newEditor editorCmd
+
+                E.RemoveGroupBefore ->
+                    syncWithEditor model newEditor editorCmd
+
+                E.Indent ->
+                    syncWithEditor model newEditor editorCmd
+
+                E.Deindent ->
+                    syncWithEditor model newEditor editorCmd
+
+                E.Clear ->
+                    syncWithEditor model newEditor editorCmd
+
+                E.WrapSelection ->
+                    syncWithEditor model newEditor editorCmd
+                _ -> 
+                        ( { model | editor = newEditor, currentString = sourcetext }, Cmd.map EditorMsg editorCmd )
+
         InputChange str ->
             let
                 newSequence =
@@ -51,9 +108,45 @@ update msg model =
             ( { model | includeTheme = newVal }, Cmd.none )
 
         ShowExample ->
-            ( { model | currentString = Just example, sequence = parse example }, Cmd.none )
+            let
+                newEditor =
+                    Editor.load DontWrap example model.editor
+            in
+            ( { model | currentString = Just example, sequence = parse example, editor = newEditor }, Cmd.none )
 
 
+load : WrapOption -> String -> Model -> ( Model, Cmd Msg )
+load wrapOption text model =
+    let
+        newEditor =
+            Editor.load wrapOption text model.editor
+    in
+    ( { model | editor = newEditor }, Cmd.none )
+
+
+updateEditor : Model -> Editor -> Cmd EditorMsg -> ( Model, Cmd Msg )
+updateEditor model editor_ cmd_ =
+    ( { model | editor = editor_ }, Cmd.map EditorMsg cmd_ )
+    
+syncWithEditor : Model -> Editor -> Cmd EditorMsg -> ( Model, Cmd Msg )
+syncWithEditor model editor_ cmd_ =
+    let
+        text =
+            Editor.getSource editor_
+        
+        newSequence =
+                    parse text
+
+
+    in
+    ( { model
+        | editor = editor_
+        , sequence = newSequence
+        , currentString = Just text
+    
+      }
+    , Cmd.map EditorMsg cmd_
+    )
 document : Model -> Browser.Document Msg
 document model =
     { title = "platUml sequence diagram generator"
@@ -95,17 +188,27 @@ view model =
 
 editor : Model -> Element Msg
 editor model =
-    Input.multiline
-        [ Element.height (px 600)
-        , Background.color (Element.rgb 0.2 0.2 0.2)
-        , Font.color (Element.rgb 0.9 0.9 0.9)
-        ]
-        { onChange = InputChange
-        , text = Maybe.withDefault "" model.currentString
-        , placeholder = Nothing
-        , label = Input.labelAbove [] (text "Sequence Diagram")
-        , spellcheck = False
-        }
+
+    Element.el 
+        [ Element.width (px <| Basics.round <| Editor.getWidth model.editor) 
+        ] 
+        ( Element.html <| Editor.embedded editorConfig model.editor )
+            
+
+    
+
+
+    -- Input.multiline
+    --     [ Element.height (px 600)
+    --     , Background.color (Element.rgb 0.2 0.2 0.2)
+    --     , Font.color (Element.rgb 0.9 0.9 0.9)
+    --     ]
+    --     { onChange = InputChange
+    --     , text = Maybe.withDefault "" model.currentString
+    --     , placeholder = Nothing
+    --     , label = Input.labelAbove [] (text "Sequence Diagram")
+    --     , spellcheck = False
+    --     }
 
 
 right : Model -> Element Msg
@@ -186,11 +289,11 @@ includeTheme model =
 
 icon : Bool -> Element msg
 icon val =
-    case val of
-        True ->
+    if val 
+        then
             switchOffButton
 
-        False ->
+        else
             switchOnButton
 
 
@@ -246,6 +349,19 @@ init : Value -> ( Model, Cmd Msg )
 init _ =
     ( initModel, Cmd.none )
 
+editorConfig : EditorConfig Msg
+editorConfig =
+    { editorMsg = EditorMsg
+    , width = 500
+    , height = 480
+    , lineHeight = 16.0
+    , showInfoPanel = True
+    , wrapParams = { maximumWidth = 55, optimalWidth = 50, stringWidth = String.length }
+    , wrapOption = DontWrap
+    , fontProportion = 0.75
+    , lineHeightFactor = 1.0
+    }
+
 
 example : String
 example =
@@ -267,8 +383,10 @@ initModel =
     , currentString = Nothing
     , alwaysReturn = True
     , includeTheme = False
+    , editor = Editor.init editorConfig ""
     }
 
+    
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
